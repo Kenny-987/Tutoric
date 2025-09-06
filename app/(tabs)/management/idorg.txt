@@ -1,0 +1,564 @@
+import { StyleSheet, Text, View, ScrollView,TouchableOpacity} from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { router, useLocalSearchParams } from 'expo-router';
+import {MaterialIcons,Ionicons, FontAwesome} from '@expo/vector-icons';
+import { colors } from '@/styles/styles';
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
+import CreateSession from './components/modals/CreateSession';
+import Sessions from './components/tabs/Sessions';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+export default function StudentProfile() {
+    const { id } = useLocalSearchParams();
+    const [student,setStudent] = useState<any>({});
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [activeTab,setActiveTab] = useState('overview')
+
+    useEffect(()=>{
+      const fetchStudent = async ()=>{
+        const token = await SecureStore.getItemAsync('token')
+        try {
+          const response = await axios.get(`http://10.182.90.139:3000/students/student/${id}`,{
+            headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+          })
+          if(response.status===200){
+            console.log(response.data);
+            setStudent(response.data)
+          }else{
+            alert("Something went wrong " + response.statusText)
+          }
+        }
+         catch (error) {
+        console.error(error)
+      }
+      }
+      fetchStudent()
+    },[])
+const formatDay = (day:any)=>{
+  const date = new Date(day);
+
+  const formatted = date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  return formatted
+}
+    const {full_name,subject,grade,created_at,is_minor,email,phone,hourly_rate,notes,address,age,status}=student
+  return (
+    <SafeAreaView style={styles.container}>
+  
+    <CreateSession  
+    visible={isModalVisible}
+    onClose={() => setIsModalVisible(false)}
+    student={student}
+    />
+
+  {/* Header Section */}
+
+  <View style={styles.header}>
+  <View style={styles.back}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="arrow-back"
+              size={24}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
+    <View style={styles.headerContent}>
+      <View style={styles.studentBasics}>
+        <Text style={styles.studentName}>{full_name}</Text>
+        <Text style={styles.studentDetails}>{subject} • {grade} • Age {age}</Text>
+        <Text style={styles.studentDetails}>${hourly_rate}/hr</Text>
+        <View style={styles.statusRow}>
+          <View style={[styles.statusBadge, styles.activeBadge]}>
+            <View style={styles.statusDot}></View>
+            <Text style={styles.statusText}>{status}</Text>
+          </View>
+          <Text style={styles.joinDate}>Student since {formatDay(created_at)}</Text>
+        </View>
+      </View>
+      <TouchableOpacity style={styles.editButton}>
+        <MaterialIcons name="edit" size={20} color="#718096" />
+      </TouchableOpacity>
+    </View>
+  </View>
+  <View style={styles.filterContainer}>
+  <TouchableOpacity onPress={()=>setActiveTab('overview')} style={[styles.filterChip, activeTab=='overview'?styles.activeFilterChip:'']}>
+    <Text style={[styles.filterText, activeTab=='overview'?styles.activeFilterText:'']}>Overview</Text>
+  </TouchableOpacity>
+  
+  <TouchableOpacity style={[styles.filterChip, activeTab=='sessions'?styles.activeFilterChip:'']} onPress={()=>setActiveTab('sessions')}>
+    <Text style={[styles.filterText, activeTab=='sessions'?styles.activeFilterText:'']}>Sessions</Text>
+  </TouchableOpacity>
+  
+  <TouchableOpacity style={styles.filterChip}>
+    <Text style={styles.filterText}>Lesson Planning</Text>
+  </TouchableOpacity>
+</View>
+{activeTab == 'overview' && 
+<ScrollView>
+{/* Contact Information */}
+<View style={styles.section}>
+  <Text style={styles.sectionTitle}>Contact Information</Text>
+  
+  {/* Parent Contact */}
+  {is_minor && 
+  <View style={styles.contactCard}>
+  <Text style={styles.contactLabel}>Parent/Guardian <MaterialIcons size={16} name='edit'/></Text>
+  <View style={styles.contactRow}>
+    <MaterialIcons name="person" size={18} color="#718096" />
+    <Text style={styles.contactText}>Jennifer Johnson (Mother)</Text>
+  </View>
+  <View style={styles.contactRow}>
+    <MaterialIcons name="phone" size={18} color="#718096" />
+    <Text style={styles.contactText}>(555) 123-4567</Text>
+  </View>
+  <View style={styles.contactRow}>
+    <MaterialIcons name="email" size={18} color="#718096" />
+    <Text style={styles.contactText}>jennifer.johnson@email.com</Text>
+  </View>
+</View> }
+  
+
+  {/* Student Contact */}
+  <View style={styles.contactCard}>
+    <Text style={styles.contactLabel}>Student <MaterialIcons size={16} name='edit'/></Text>
+    <View style={styles.contactRow}>
+      <MaterialIcons name="phone" size={18} color="#718096" />
+      <Text style={styles.contactText}>{phone?phone:'No phone number'}</Text>
+    </View>
+    <View style={styles.contactRow}>
+      <MaterialIcons name="email" size={18} color="#718096" />
+      <Text style={styles.contactText}>{email?email:'No email'}</Text>
+    </View>
+    <View style={styles.contactRow}>
+      <MaterialIcons name="house" size={18} color="#718096" />
+      <Text style={styles.contactText}>{address?address:'No address entered'}</Text>
+    </View>
+  </View>
+</View>
+
+
+      {/* Quick Actions */}
+<View style={styles.section}>
+  <View style={styles.actionButtons}>
+    <TouchableOpacity style={styles.primaryButton} onPress={()=>setIsModalVisible(true)}>
+      <MaterialIcons name="calendar-today" size={20} color="#fff" />
+      <Text style={styles.primaryButtonText}>Add Session</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity style={styles.primaryButton} onPress={()=>setIsModalVisible(true)}>
+      <FontAwesome name="book" size={20} color="#fff" />
+      <Text style={styles.primaryButtonText}>Generate Lesson Plan</Text>
+    </TouchableOpacity>
+  </View>
+
+  <View style={styles.actionButtons}>
+    <TouchableOpacity style={styles.secondaryButton}>
+      <MaterialIcons name="payment" size={20} color={colors.primary} />
+      <Text style={styles.secondaryButtonText}>Generate Invoice</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity style={styles.secondaryButton} onPress={()=> router.push(`/(tabs)/management/transactions/${student.id}`)}>
+      <MaterialIcons name="trending-up" size={20} color={colors.primary} />
+      <Text style={styles.secondaryButtonText}>Transactions</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+
+  {/* Upcoming sessions */}
+  <View style={styles.section}>
+  <Text style={styles.sectionTitle}>Upcoming Sessions</Text>
+  <View style={styles.summaryGrid}>
+    <View style={styles.summaryCard}>
+      <Text style={styles.summaryLabel}>Date: 08/29/2025</Text>
+      <Text style={styles.summaryLabel}>Time: 08:00 - 10:00 am</Text>
+    </View>
+    <View style={styles.summaryCard}>
+      <Text style={styles.summaryLabel}>Date: 08/29/2025</Text>
+      <Text style={styles.summaryLabel}>Time: 08:00 - 10:00 am</Text>
+    </View>
+  </View>
+</View>
+
+{/* Notes Section */}
+<View style={styles.section}>
+  <Text style={styles.sectionTitle}>Student Notes</Text>
+  <View style={styles.notesCard}>
+    <Text style={styles.notesText}>
+      {notes}
+    </Text>
+    <TouchableOpacity style={styles.editNotesButton}>
+      <MaterialIcons name="edit" size={16} color="#84CC16" />
+      <Text style={styles.editNotesText}>Edit Notes</Text>
+    </TouchableOpacity>
+  </View>
+  <Text></Text>
+</View>
+</ScrollView> }
+
+{activeTab=='sessions' && <Sessions student={student}/>}
+
+
+
+
+
+  {/* Recent Sessions
+  <View style={styles.section}>
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>Recent Sessions</Text>
+      <TouchableOpacity>
+        <Text style={styles.viewAllText}>View All</Text>
+      </TouchableOpacity>
+    </View>
+
+    <View style={styles.sessionCard}>
+      <View style={styles.sessionHeader}>
+        <Text style={styles.sessionDate}>Oct 15, 2024</Text>
+        <View style={[styles.paymentBadge, styles.paidBadge]}>
+          <Text style={styles.paymentText}>Paid</Text>
+        </View>
+      </View>
+      <Text style={styles.sessionDuration}>2 hours • $90</Text>
+      <Text style={styles.sessionNotes}>Worked on quadratic equations. Sarah is improving with factoring techniques. Homework: Complete exercises 1-15.</Text>
+    </View>
+
+    <View style={styles.sessionCard}>
+      <View style={styles.sessionHeader}>
+        <Text style={styles.sessionDate}>Oct 12, 2024</Text>
+        <View style={[styles.paymentBadge, styles.unpaidBadge]}>
+          <Text style={styles.paymentText}>Unpaid</Text>
+        </View>
+      </View>
+      <Text style={styles.sessionDuration}>1.5 hours • $67.50</Text>
+      <Text style={styles.sessionNotes}>Review of trigonometry basics. Need to focus more on sin/cos relationships next session.</Text>
+    </View>
+
+    <View style={styles.sessionCard}>
+      <View style={styles.sessionHeader}>
+        <Text style={styles.sessionDate}>Oct 8, 2024</Text>
+        <View style={[styles.paymentBadge, styles.paidBadge]}>
+          <Text style={styles.paymentText}>Paid</Text>
+        </View>
+      </View>
+      <Text style={styles.sessionDuration}>2 hours • $90</Text>
+      <Text style={styles.sessionNotes}>Excellent progress on algebra word problems. Sarah is gaining confidence.</Text>
+    </View>
+  </View> */}
+
+
+
+</SafeAreaView>
+  )
+}
+
+const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#F7FAFC',
+      marginBottom:70
+    },
+    back: {
+        paddingTop: 0,
+        paddingBottom: 0,
+      },
+      backButton: {
+        width: 40,
+        height: 40, 
+        borderRadius: 20,
+        backgroundColor: colors.primaryLight,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginTop:0,
+        marginBottom:10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+      },
+    // Header
+    header: {
+      backgroundColor: '#fff',
+      paddingHorizontal: 20,
+      paddingVertical: 24,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E2E8F0',
+    },
+    headerContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    studentBasics: {
+      flex: 1,
+    },
+    studentName: {
+      fontSize: 24,
+      fontWeight: '700',
+      color: '#2D3748',
+      marginBottom: 4,
+    },
+    studentDetails: {
+      fontSize: 16,
+      color: '#718096',
+      marginBottom: 12,
+    },
+    statusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#F0FDF4',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      marginRight: 12,
+    },
+    activeBadge: {
+      backgroundColor: '#F0FDF4',
+    },
+    statusDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#10B981',
+      marginRight: 4,
+    },
+    statusText: {
+      fontSize: 12,
+      color: '#10B981',
+      fontWeight: '500',
+    },
+    joinDate: {
+      fontSize: 12,
+      color: '#718096',
+    },
+    editButton: {
+      padding: 8,
+    },
+    filterContainer: {
+      width:'100%',
+      margin:'auto',
+      display:'flex',
+      flexDirection:'row',
+      justifyContent:'space-evenly',
+      marginTop:10
+    },
+    filterContent: {
+      paddingHorizontal: 16,
+    },
+    filterChip: {
+      backgroundColor: '#fff',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border2,
+    },
+    activeFilterChip: {
+      backgroundColor: colors.primary,
+      // borderColor: '#84CC16',
+    },
+    filterText: {
+      fontSize: 14,
+      color: '#718096',
+      fontWeight: '500',
+    },
+    activeFilterText: {
+      color: '#fff',
+    },
+    // Sections
+    section: {
+      backgroundColor: '#fff',
+      marginTop: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 20,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#2D3748',
+      marginBottom: 16,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    viewAllText: {
+      fontSize: 14,
+      color: '#84CC16',
+      fontWeight: '500',
+    },
+  
+    // Contact Cards
+    contactCard: {
+      backgroundColor: '#F8FAFC',
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 12,
+    },
+    contactLabel: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#2D3748',
+      marginBottom: 12,
+    },
+    contactRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    contactText: {
+      fontSize: 14,
+      color: '#718096',
+      marginLeft: 8,
+      flex: 1,
+    },
+    contactAction: {
+      padding: 4,
+    },
+  
+    // Summary Grid
+    summaryGrid: {
+      flexDirection: 'column',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    summaryCard: {
+      backgroundColor: '#F8FAFC',
+      borderRadius: 8,
+      padding: 8,
+      width: '100%',
+    },
+    summaryLabel: {
+      fontSize: 16,
+      fontWeight:600,
+      color: colors.textSecondary,
+    },
+    warningNumber: {
+      color: '#F59E0B',
+    },
+  
+    // Action Buttons
+    actionButtons: {
+      flexDirection: 'row',
+      gap: 4,
+      flexWrap:'wrap',
+      justifyContent:'space-between',
+      marginBottom:10
+    },
+    primaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    primaryButtonText: {
+      fontSize: 15,
+      color: '#fff',
+      fontWeight: '600',
+      marginLeft: 6,
+    },
+    secondaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff',
+      borderWidth: 1,
+      borderColor: colors.primary,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    secondaryButtonText: {
+      fontSize: 15,
+      color: colors.primary,
+      fontWeight: '600',
+      marginLeft: 6,
+    },
+  
+    // Session Cards
+    sessionCard: {
+      backgroundColor: '#F8FAFC',
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 12,
+    },
+    sessionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    sessionDate: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#2D3748',
+    },
+    paymentBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+    },
+    paidBadge: {
+      backgroundColor: '#F0FDF4',
+    },
+    unpaidBadge: {
+      backgroundColor: '#FEF3C7',
+    },
+    paymentText: {
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    sessionDuration: {
+      fontSize: 14,
+      color: '#718096',
+      marginBottom: 8,
+    },
+    sessionNotes: {
+      fontSize: 14,
+      color: '#2D3748',
+      lineHeight: 20,
+    },
+  
+    // Notes
+    notesCard: {
+      backgroundColor: '#F8FAFC',
+      borderRadius: 8,
+      padding: 16,
+    },
+    notesText: {
+      fontSize: 14,
+      color: '#2D3748',
+      lineHeight: 20,
+      marginBottom: 12,
+    },
+    editNotesButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    editNotesText: {
+      fontSize: 14,
+      color: '#84CC16',
+      fontWeight: '500',
+      marginLeft: 4,
+    },
+  });

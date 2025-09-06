@@ -1,0 +1,435 @@
+import React, { useState } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  StyleSheet,
+  Platform,
+} from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Picker } from '@react-native-picker/picker';
+
+const AddSessionModal = ({  visible,  onClose,  onSubmit,  student}:any) => {
+  const [formData, setFormData] = useState({
+    tutor_id: '',
+    student_id: '',
+    event_type: 'lesson',
+    title: '',
+    start_time: new Date(),
+    end_time: new Date(Date.now() + 60 * 60 * 1000), // 1 hour later
+    completion_status: 'scheduled',
+    payment_status: 'unpaid',
+    payment_amount: '',
+    hourly_rate: '',
+    duration: '',
+    notes: '',
+  });
+
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+
+  const eventTypes = ['lesson', 'consultation', 'assessment', 'review'];
+  const completionStatuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+  const paymentStatuses = ['unpaid', 'paid', 'pending', 'refunded'];
+
+  const handleInputChange = (field:any, value:any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleDateChange = (field:any, event:any, selectedDate:any) => {
+    if (Platform.OS === 'android') {
+      setShowStartPicker(false);
+      setShowEndPicker(false);
+    }
+    
+    if (selectedDate) {
+      handleInputChange(field, selectedDate);
+    }
+  };
+
+  const handleTimeChange = (field:any, event:any, selectedTime:any) => {
+    if (Platform.OS === 'android') {
+      setShowStartTimePicker(false);
+      setShowEndTimePicker(false);
+    }
+    
+    if (selectedTime) {
+      const currentDate = formData[field.replace('_time', '_time')];
+      const newDateTime = new Date(currentDate);
+      newDateTime.setHours(selectedTime.getHours());
+      newDateTime.setMinutes(selectedTime.getMinutes());
+      handleInputChange(field, newDateTime);
+    }
+  };
+
+  const calculateDuration = () => {
+    const start = new Date(formData.start_time);
+    const end = new Date(formData.end_time);
+    const diffMs = end - start;
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60) * 100) / 100;
+    return diffHours > 0 ? `${diffHours}h` : '0h';
+  };
+
+  const validateForm = () => {
+    if (!formData.tutor_id) {
+      Alert.alert('Error', 'Please select a tutor');
+      return false;
+    }
+    if (!formData.title.trim()) {
+      Alert.alert('Error', 'Please enter a title');
+      return false;
+    }
+    if (formData.end_time <= formData.start_time) {
+      Alert.alert('Error', 'End time must be after start time');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = () => {
+    if (!validateForm()) return;
+
+    const sessionData = {
+      ...formData,
+      duration: calculateDuration(),
+      payment_amount: formData.payment_amount ? parseFloat(formData.payment_amount) : null,
+      hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+    };
+
+    onSubmit(sessionData);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setFormData({
+      tutor_id: '',
+      student_id: '',
+      event_type: 'lesson',
+      title: '',
+      start_time: new Date(),
+      end_time: new Date(Date.now() + 60 * 60 * 1000),
+      completion_status: 'scheduled',
+      payment_status: 'unpaid',
+      payment_amount: '',
+      hourly_rate: '',
+      duration: '',
+      notes: '',
+    });
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
+  const formatDateTime = (date:any) => {
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleClose}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleClose}>
+            <Text style={styles.cancelButton}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>Add Session</Text>
+          <TouchableOpacity onPress={handleSubmit}>
+            <Text style={styles.saveButton}>Save</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+
+          {/* Student Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Student</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.student_id}
+                onValueChange={(value) => handleInputChange('student_id', value)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Select a student (optional)" value="" />
+                {students.map((student) => (
+                  <Picker.Item 
+                    key={student.id} 
+                    label={student.name || `Student ${student.id}`} 
+                    value={student.id} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          {/* Event Type */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Event Type</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.event_type}
+                onValueChange={(value) => handleInputChange('event_type', value)}
+                style={styles.picker}
+              >
+                {eventTypes.map((type) => (
+                  <Picker.Item 
+                    key={type} 
+                    label={type.charAt(0).toUpperCase() + type.slice(1)} 
+                    value={type} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          {/* Title */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Title *</Text>
+            <TextInput
+              style={styles.textInput}
+              value={formData.title}
+              onChangeText={(value) => handleInputChange('title', value)}
+              placeholder="Enter session title"
+              placeholderTextColor="#999"
+            />
+          </View>
+
+          {/* Start Time */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Start Time *</Text>
+            <TouchableOpacity 
+              style={styles.dateTimeButton}
+              onPress={() => setShowStartPicker(true)}
+            >
+              <Text style={styles.dateTimeText}>
+                {formatDateTime(formData.start_time)}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* End Time */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>End Time *</Text>
+            <TouchableOpacity 
+              style={styles.dateTimeButton}
+              onPress={() => setShowEndPicker(true)}
+            >
+              <Text style={styles.dateTimeText}>
+                {formatDateTime(formData.end_time)}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Duration Display */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Duration</Text>
+            <Text style={styles.durationText}>{calculateDuration()}</Text>
+          </View>
+
+          {/* Hourly Rate */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Hourly Rate</Text>
+            <TextInput
+              style={styles.textInput}
+              value={formData.hourly_rate}
+              onChangeText={(value) => handleInputChange('hourly_rate', value)}
+              placeholder="0.00"
+              placeholderTextColor="#999"
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* Payment Amount */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Payment Amount</Text>
+            <TextInput
+              style={styles.textInput}
+              value={formData.payment_amount}
+              onChangeText={(value) => handleInputChange('payment_amount', value)}
+              placeholder="0.00"
+              placeholderTextColor="#999"
+              keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* Completion Status */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Completion Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.completion_status}
+                onValueChange={(value) => handleInputChange('completion_status', value)}
+                style={styles.picker}
+              >
+                {completionStatuses.map((status) => (
+                  <Picker.Item 
+                    key={status} 
+                    label={status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1)} 
+                    value={status} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          {/* Payment Status */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Payment Status</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={formData.payment_status}
+                onValueChange={(value) => handleInputChange('payment_status', value)}
+                style={styles.picker}
+              >
+                {paymentStatuses.map((status) => (
+                  <Picker.Item 
+                    key={status} 
+                    label={status.charAt(0).toUpperCase() + status.slice(1)} 
+                    value={status} 
+                  />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          {/* Notes */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Notes</Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              value={formData.notes}
+              onChangeText={(value) => handleInputChange('notes', value)}
+              placeholder="Add any additional notes..."
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
+        </ScrollView>
+
+        {/* Date/Time Pickers */}
+        {showStartPicker && (
+          <DateTimePicker
+            value={formData.start_time}
+            mode="datetime"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(event, date) => handleDateChange('start_time', event, date)}
+          />
+        )}
+
+        {showEndPicker && (
+          <DateTimePicker
+            value={formData.end_time}
+            mode="datetime"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(event, date) => handleDateChange('end_time', event, date)}
+          />
+        )}
+      </View>
+    </Modal>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e5e9',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: '#6c757d',
+  },
+  saveButton: {
+    fontSize: 16,
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  form: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#d0d7de',
+    borderRadius: 8,
+    padding: 16,
+    fontSize: 16,
+    backgroundColor: '#fff',
+    color: '#1a1a1a',
+  },
+  textArea: {
+    height: 100,
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#d0d7de',
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  dateTimeButton: {
+    borderWidth: 1,
+    borderColor: '#d0d7de',
+    borderRadius: 8,
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  dateTimeText: {
+    fontSize: 16,
+    color: '#1a1a1a',
+  },
+  durationText: {
+    fontSize: 16,
+    color: '#6c757d',
+    fontStyle: 'italic',
+    paddingVertical: 8,
+  },
+});
+
+export default AddSessionModal;
