@@ -30,7 +30,7 @@ export const colors = {
     // Borders/dividers
     border: "#1A1A1A", 
     border1:"#83f28f",
-    border2:"#E2E8F0"       // Subtle borders
+    border2:"#E2E8F0"       
   };
 
 export const globalStyles = StyleSheet.create({
